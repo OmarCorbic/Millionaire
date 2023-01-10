@@ -1,26 +1,21 @@
-import { useState, useEffect, useRef } from "react";
 import React from 'react';
-import _ from 'lodash';
-import { Howl } from 'howler';
-
+import { useState, useEffect, useRef } from "react";
 import Confirmation from "./Confirmation";
 import AudienceJoker from "./AudienceJoker";
 import FriendJoker from "./FriendJoker";
 import ValidationDialog from "./ValidationDialog";
-
+import { Howl } from 'howler';
 import LetsPlay from "../sounds/letsPlay.mp3";
 
-const MainSection = ({ onPlayAgain, calledJoker, onLevelChange }) =>{
+const MainSection = ({ questionsData, onPlayAgain, calledJoker, onLevelChange }) =>{
 
-    const [question, setQuestion] = useState('');
-    const [correctAnswer, setCorrectAnswer] = useState('');
-    const [shuffledAnswers, setShuffledAnswers] = useState([]);
+    const [currentQuestion, setCurrentQuestion] = useState(questionsData[0]);
     const [answered, setAnswered] = useState('');
     const [level, setLevel] = useState(0);
     
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [showAudienceJoker, setShowAudienceJoker] = useState(false);
-    const [showFriendJoker, setShowFriendJoker] = useState(false);
+    const [showFriendJoker, setShowFriendJoker] = useState(false);  
     const [showFiftyFiftyJoker, setShowFiftyFiftyJoker] = useState(false);
     const [showValidationDialog, setShowValidationDialog] = useState(false);
 
@@ -29,37 +24,16 @@ const MainSection = ({ onPlayAgain, calledJoker, onLevelChange }) =>{
     const buttonRef = useRef(null); 
 
     useEffect(() => {
-        
         level === 0 && playSound(LetsPlay);
 
-        let query = 'easy';
-
-        if(level < 5){
-            query = 'easy';
-        }else if(level < 10){
-            query = 'medium';
-        }else if(level < 14){
-            query = 'hard';
-        }
-
-        fetch("https://the-trivia-api.com/api/questions?limit=1&difficulty=" + query)
-        .then(response => response.json())
-        .then(([{question, correctAnswer, incorrectAnswers}]) => {
-            setQuestion(question);
-            setCorrectAnswer(correctAnswer);
-            setShuffledAnswers(_.shuffle([...incorrectAnswers, correctAnswer]).map((answer, i) => {
-               return {
-                id: String.fromCharCode(65 + i),
-                text: answer,
-            };
-            }));
+        setCurrentQuestion({...questionsData[level]});
+    
+        return () => {
+            buttonRef.current = null;
             setShowAudienceJoker(false);
             setShowFriendJoker(false);
-        })
-        .catch(err => console.log(err));
-        //console.log('Main section fetch useEffect triggered!');
-        buttonRef.current = null;
-    }, [level]);
+        }
+    }, [level, questionsData]);
 
     useEffect(() => {
         switch(calledJoker){
@@ -75,7 +49,6 @@ const MainSection = ({ onPlayAgain, calledJoker, onLevelChange }) =>{
             default:
             break;
         }
-        console.log('Main section joker useEffect triggered!');
     }, [calledJoker]);
 
     const handleClick = (button, answer) =>{
@@ -89,7 +62,7 @@ const MainSection = ({ onPlayAgain, calledJoker, onLevelChange }) =>{
     const handleConfirm = () => {
         buttonRef.current.classList.remove('chosen');
 
-        if(answered === correctAnswer){
+        if(answered === currentQuestion.correctAnswer){
             buttonRef.current.classList.add('correct');
             setAnsweredCorrectly(true);
             setShowValidationDialog(true);
@@ -145,7 +118,7 @@ const MainSection = ({ onPlayAgain, calledJoker, onLevelChange }) =>{
                 </div>
                 <div>
                     {showAudienceJoker && (
-                        <AudienceJoker onClose={closeJoker} answers={shuffledAnswers} correctAnswer={correctAnswer}/>
+                        <AudienceJoker onClose={closeJoker} answers={currentQuestion.shuffledAnswers} correctAnswer={currentQuestion.correctAnswer}/>
                     )}
                 </div>
             </div>
@@ -155,11 +128,10 @@ const MainSection = ({ onPlayAgain, calledJoker, onLevelChange }) =>{
                 )}
           
             <div className="hexagon-question-wrapper">
-                <div className="hexagon-question">{question}</div>
+                <div className="hexagon-question">{currentQuestion.question}</div>
             </div>
-            
             <div className={`answers-wrapper${showConfirmDialog || showValidationDialog ? ' unclickable':''}`}>
-                {shuffledAnswers.map((answer) => {
+                {currentQuestion.shuffledAnswers.map((answer) => {
                     return (
                         <div key={answer.id}  className="hexagon-answer-wrapper">
                             <button 

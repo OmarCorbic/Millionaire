@@ -1,8 +1,11 @@
 import MainSection from './MainSection.js';
 import Ladder from './Ladder.js';
 import { useState, useEffect } from 'react';
+import _ from 'lodash';
 
 const StartDisplay = () =>{
+
+    const [questionsData, setQuestionsData] = useState([]);
 
     const [gameOn, setGameOn] = useState(false);
     const [level, setLevel] = useState(0);
@@ -10,6 +13,44 @@ const StartDisplay = () =>{
     const [calledJoker, setCalledJoker] = useState('');
 
     useEffect(() =>{
+
+        const dataFetch = async () =>{
+
+            const result = (
+                await Promise.all([
+                    fetch("https://the-trivia-api.com/api/questions?limit=5&difficulty=medium"),
+                    fetch("https://the-trivia-api.com/api/questions?limit=9&difficulty=hard")
+                ])
+            ).map(r => r.json());
+
+            const [mediumQuestions, hardQuestions] = await Promise.all(result);
+
+            const allQuestions = [...mediumQuestions, ...hardQuestions].map( ({question, correctAnswer, incorrectAnswers}) => {
+
+                const shuffledAnswers = _.shuffle([correctAnswer, ...incorrectAnswers]).map((answer, index) => {
+                    return {
+                        id: String.fromCharCode(65 + index),
+                        text: answer
+                    }
+                });
+                return {
+                    question: question, 
+                    correctAnswer: correctAnswer, 
+                    shuffledAnswers: shuffledAnswers
+                };
+            });
+
+            
+            setQuestionsData([...allQuestions]);
+        }
+
+        
+        !gameOn && dataFetch();
+
+       
+    }, [gameOn])
+
+    useEffect(() => {
         if(level === 14){
             setIsMillionaire(true);
         }
@@ -17,9 +58,7 @@ const StartDisplay = () =>{
             setLevel(0);
             setCalledJoker('');
         }
-
-        //console.log('Start display useEffect triggered!');
-    }, [level, gameOn])
+    }, [level, gameOn]);
 
     const startGame = () =>{
         setGameOn(true);
@@ -51,7 +90,7 @@ const StartDisplay = () =>{
         }else{
             return (
                 <div className="container">
-                    <MainSection onPlayAgain={handlePlayAgain} calledJoker={calledJoker} onLevelChange={handleLevelChange} />
+                    <MainSection questionsData={questionsData} onPlayAgain={handlePlayAgain} calledJoker={calledJoker} onLevelChange={handleLevelChange} />
                     <Ladder gameOn={gameOn} level={level} onJokerCall={handleJokerCall}/>
                 </div>
             )
