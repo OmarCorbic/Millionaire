@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useState, useEffect, useRef } from "react";
 import Confirmation from "./Confirmation";
 import AudienceJoker from "./AudienceJoker";
@@ -16,7 +16,6 @@ const MainSection = ({ questionsData, onPlayAgain, calledJoker, onLevelChange })
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [showAudienceJoker, setShowAudienceJoker] = useState(false);
     const [showFriendJoker, setShowFriendJoker] = useState(false);  
-    const [showFiftyFiftyJoker, setShowFiftyFiftyJoker] = useState(false);
     const [showValidationDialog, setShowValidationDialog] = useState(false);
 
     const [answeredCorrectly, setAnsweredCorrectly] = useState(false);
@@ -27,11 +26,11 @@ const MainSection = ({ questionsData, onPlayAgain, calledJoker, onLevelChange })
         level === 0 && playSound(LetsPlay);
 
         setCurrentQuestion({...questionsData[level]});
-    
         return () => {
             buttonRef.current = null;
             setShowAudienceJoker(false);
             setShowFriendJoker(false);
+            setCurrentQuestion(null);
         }
     }, [level, questionsData]);
 
@@ -40,9 +39,9 @@ const MainSection = ({ questionsData, onPlayAgain, calledJoker, onLevelChange })
             case 'FRIEND':
                 setShowFriendJoker(true);
                 break;
-            case 'FIFTY_FIFTY':
-                setShowFiftyFiftyJoker(true);
-                break;
+                case 'FIFTY_FIFTY':
+                    showFiftyFiftyJoker();
+                    break;
             case 'AUDIENCE':
                 setShowAudienceJoker(true);
                 break;
@@ -50,18 +49,19 @@ const MainSection = ({ questionsData, onPlayAgain, calledJoker, onLevelChange })
             break;
         }
     }, [calledJoker]);
-
+    
     const handleClick = (button, answer) =>{
         buttonRef.current = button;
+        button.classList.add('chosen');
         setAnswered(answer);
         setShowConfirmDialog(true);
         setShowAudienceJoker(false);
         setShowFriendJoker(false);
     }
 
-    const handleConfirm = () => {
+    const handleConfirm = useCallback(() => {
         buttonRef.current.classList.remove('chosen');
-
+        
         if(answered === currentQuestion.correctAnswer){
             buttonRef.current.classList.add('correct');
             setAnsweredCorrectly(true);
@@ -72,34 +72,58 @@ const MainSection = ({ questionsData, onPlayAgain, calledJoker, onLevelChange })
             setShowValidationDialog(true);
         }
         setShowConfirmDialog(false);
-    }
+    }, [answered, currentQuestion]);
     
-    const handleCancel = () => {
+    const handleCancel = useCallback(() => {
         setShowConfirmDialog(false);
         setAnswered('');
-    }
-
-    const closeJoker = (joker) =>{
+        buttonRef.current.classList.remove('chosen');
+    }, []);
+    
+    const closeJoker = useCallback((joker) =>{
         switch(joker){
             case 'AUDIENCE': 
                 setShowAudienceJoker(false);
                 break;
-            case 'FRIEND': 
+                case 'FRIEND': 
                 setShowFriendJoker(false);
                 break;
             default:
                 break;
         }
-    }   
+    }, []);   
 
-    const handleNextQuestion = () =>{
+    const handleNextQuestion = useCallback(() =>{
         setLevel(level + 1, onLevelChange(level+1));
         setShowValidationDialog(false);
-    }
+        buttonRef.current.classList.remove('correct');
+        buttonRef.current.classList.remove('incorrect');
+    }, [level, onLevelChange]);
+    
 
     const playSound = (src) =>{
         const sound = new Howl({ src });
         sound.play();
+    }
+
+    const showFiftyFiftyJoker = () =>{
+        const correctAnswerLetter = currentQuestion.shuffledAnswers.find(answer => answer.text === currentQuestion.correctAnswer).id;
+        let randomWrongLetter = String.fromCharCode(65 + Math.floor(Math.random() * 4));
+        while(randomWrongLetter === correctAnswerLetter){
+            randomWrongLetter = String.fromCharCode(65 + Math.floor(Math.random() * 4));
+        }
+        
+        const newAnswers = currentQuestion.shuffledAnswers.map(answer => {
+            if(answer.text === currentQuestion.correctAnswer || answer.id === randomWrongLetter){
+                return answer;   
+            }else{
+                return {...answer, text: ''};
+            }
+        });
+        
+        setCurrentQuestion(prevQuestion => {
+            return {...prevQuestion, shuffledAnswers: [...newAnswers]}
+        })
     }
 
     return (
@@ -130,6 +154,7 @@ const MainSection = ({ questionsData, onPlayAgain, calledJoker, onLevelChange })
             <div className="hexagon-question-wrapper">
                 <div className="hexagon-question">{currentQuestion.question}</div>
             </div>
+
             <div className={`answers-wrapper${showConfirmDialog || showValidationDialog ? ' unclickable':''}`}>
                 {currentQuestion.shuffledAnswers.map((answer) => {
                     return (
@@ -137,7 +162,7 @@ const MainSection = ({ questionsData, onPlayAgain, calledJoker, onLevelChange })
                             <button 
                                 ref={buttonRef}
                                 onClick={(e) => handleClick(e.target, answer.text)} 
-                                className={`hexagon-answer${answer.text === answered ? ' chosen ' : ''}`}>
+                                className={`hexagon-answer`}>
                                 <span>{answer.id + ':'}</span>
                                 <p>{answer.text}</p>
                             </button>

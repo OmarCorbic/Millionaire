@@ -1,12 +1,11 @@
 import MainSection from './MainSection.js';
 import Ladder from './Ladder.js';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import _ from 'lodash';
 
 const StartDisplay = () =>{
 
     const [questionsData, setQuestionsData] = useState([]);
-
     const [gameOn, setGameOn] = useState(false);
     const [level, setLevel] = useState(0);
     const [isMillionaire, setIsMillionaire] = useState(false);
@@ -39,41 +38,39 @@ const StartDisplay = () =>{
                     shuffledAnswers: shuffledAnswers
                 };
             });
-
             
             setQuestionsData([...allQuestions]);
         }
-
         
         !gameOn && dataFetch();
 
-       
+        return () =>{
+            setLevel(0);
+            setCalledJoker('');
+        }
     }, [gameOn])
 
     useEffect(() => {
         if(level === 14){
             setIsMillionaire(true);
         }
-        if(!gameOn){
-            setLevel(0);
-            setCalledJoker('');
-        }
-    }, [level, gameOn]);
+    }, [level]);
 
+    
+    const handleLevelChange = useCallback((num) =>{
+        setLevel(num);
+    }, []);
+    
+    const handleJokerCall = useCallback((joker) =>{
+        setCalledJoker(joker);
+    }, []);
+    
+    const handlePlayAgain = useCallback(() =>{
+        setGameOn(false);
+    }, []);
+    
     const startGame = () =>{
         setGameOn(true);
-    }
-
-    const handleLevelChange = (num) =>{
-        setLevel(num);
-    }
-
-    const handleJokerCall = (joker) =>{
-        setCalledJoker(joker);
-    }
-
-    const handlePlayAgain = () =>{
-        setGameOn(false);
     }
 
     if(!gameOn){
